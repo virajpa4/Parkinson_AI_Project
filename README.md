@@ -94,13 +94,21 @@ User → Assessment Form → Django Backend → ML Model → Prediction Result �
 ## 📁 Project Structure
 Parkinson_AI_Project/
 │
+
 ├── ai_models/
+
 ├── dashboard/
+
 ├── templates/
+
 ├── static/
+
 ├── screenshots/
+
 ├── manage.py
+
 ├── requirements.txt
+
 └── README.md
 
 ## 🛠️ Installation & Setup
