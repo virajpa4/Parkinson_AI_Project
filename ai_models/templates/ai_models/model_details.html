@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ model.name }} - Parkinson AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .model-details-card {
+        border-left: 5px solid;
+    }
+    .model-spiral { border-left-color: #667eea; }
+    .model-voice { border-left-color: #f093fb; }
+    .model-mri { border-left-color: #4fd1c5; }
+    .model-quiz { border-left-color: #f6ad55; }
+    .model-ensemble { border-left-color: #9f7aea; }
+    
+    .metric-card {
+        text-align: center;
+        padding: 15px;
+        border-radius: 8px;
+        background: #f8f9fa;
+    }
+    .metric-value {
+        font-size: 2em;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    
+    .feature-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Back Button -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="{% url 'ai_models:model_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+    
+    <!-- Model Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    {% if model.model_type == 'spiral' %}
+                        <i class="fas fa-draw-polygon fa-3x text-primary"></i>
+                    {% elif model.model_type == 'voice' %}
+                        <i class="fas fa-microphone fa-3x text-primary"></i>
+                    {% elif model.model_type == 'quiz' %}
+                        <i class="fas fa-clipboard-list fa-3x text-primary"></i>
+                    {% else %}
+                        <i class="fas fa-robot fa-3x text-primary"></i>
+                    {% endif %}
+                </div>
+                <div>
+                    <h1 class="h2 mb-1">{{ model.name }}</h1>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-secondary me-2">{{ model.model_type|title }}</span>
+                        <span class="badge 
+                            {% if model.status == 'trained' %}bg-success
+                            {% elif model.status == 'training' %}bg-warning
+                            {% elif model.status == 'failed' %}bg-danger
+                            {% else %}bg-secondary{% endif %}">
+                            {{ model.status|title }}
+                        </span>
+                        <span class="ms-2 text-muted">v{{ model.version }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            {% if model.status == 'trained' %}
+                <button class="btn btn-success" onclick="testModel()">
+                    <i class="fas fa-play"></i> Test Model
+                </button>
+            {% endif %}
+            <a href="{% url 'ai_models:train_models' %}" class="btn btn-primary ms-2">
+                <i class="fas fa-retweet"></i> Retrain
+            </a>
+        </div>
+    </div>
+    
+    <!-- Model Information -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card model-details-card model-{{ model.model_type }} h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Model Information</h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">{{ model.description|default:"No description available." }}</p>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h6>Model Details</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Type:</strong></td>
+                                    <td>{{ model.get_model_type_display }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if model.status == 'trained' %}bg-success
+                                            {% elif model.status == 'training' %}bg-warning
+                                            {% elif model.status == 'failed' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ model.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Created:</strong></td>
+                                    <td>{{ model.created_at|date:"M d, Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Last Updated:</strong></td>
+                                    <td>{{ model.last_updated|date:"M d, Y H:i" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>File Information</h6>
+                            {% if model.model_file %}
+                                <p><i class="fas fa-file"></i> Model file: {{ model.model_file.name }}</p>
+                            {% else %}
+                                <p class="text-muted"><i class="fas fa-file"></i> No model file uploaded</p>
+                            {% endif %}
+                            
+                            {% if model.feature_columns %}
+                                <h6 class="mt-3">Features Used</h6>
+                                <div class="feature-list">
+                                    {% for feature in model.feature_columns %}
+                                        <span class="badge bg-info me-1 mb-1">{{ feature }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Performance Metrics -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Performance Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <div class="metric-card">
+                                <small class="text-muted">Accuracy</small>
+                                <div class="metric-value text-primary">
+                                    {{ model.accuracy|floatformat:3 }}
+                                </div>
+                                <small>{{ model.accuracy|floatformat:1 }}%</small>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="metric-card">
+                                <small class="text-muted">Precision</small>
+                                <div class="metric-value text-success">
+                                    {{ model.precision|floatformat:3 }}
+                                </div>
+                                <small>{{ model.precision|floatformat:1 }}%</small>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="metric-card">
+                                <small class="text-muted">Recall</small>
+                                <div class="metric-value text-info">
+                                    {{ model.recall|floatformat:3 }}
+                                </div>
+                                <small>{{ model.recall|floatformat:1 }}%</small>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="metric-card">
+                                <small class="text-muted">F1 Score</small>
+                                <div class="metric-value text-warning">
+                                    {{ model.f1_score|floatformat:3 }}
+                                </div>
+                                <small>{{ model.f1_score|floatformat:1 }}%</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Training History -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Training History</h5>
+                </div>
+                <div class="card-body">
+                    {% if training_logs %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Dataset Size</th>
+                                        <th>Duration</th>
+                                        <th>Status</th>
+                                        <th>Accuracy</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in training_logs %}
+                                    <tr>
+                                        <td>{{ log.training_date|date:"M d, Y H:i" }}</td>
+                                        <td>{{ log.dataset_size }}</td>
+                                        <td>{{ log.training_duration|floatformat:1 }}s</td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if log.status == 'success' %}bg-success
+                                                {% elif log.status == 'failed' %}bg-danger
+                                                {% else %}bg-warning{% endif %}">
+                                                {{ log.status|title }}
+                                            </span>
+                                        </td>
+                                        <td>{{ log.metrics.accuracy|default:0|floatformat:3 }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-info" 
+                                                    onclick="viewLogDetails({{ log.id }})">
+                                                <i class="fas fa-eye"></i> View Log
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No training history available for this model.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Details Modal -->
+<div class="modal fade" id="logModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Training Log Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="logDetails"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function testModel() {
+    // Simulate model testing
+    alert(`Testing {{ model.name }}...\n\nThis would run actual inference on test data.\nFor now, this is a simulation.`);
+    
+    // In real implementation, this would call an API endpoint
+    fetch('{% url "ai_models:run_inference" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: `model_type={{ model.model_type }}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const prediction = data.prediction.prediction ? 'Parkinson\'s Detected' : 'No Parkinson\'s';
+            const confidence = (data.prediction.confidence * 100).toFixed(1);
+            alert(`Test Result:\n\nPrediction: ${prediction}\nConfidence: ${confidence}%\n\nFeatures used: ${Object.keys(data.features).join(', ')}`);
+        }
+    });
+}
+
+function viewLogDetails(logId) {
+    // Fetch log details (simulated)
+    const logContent = `Training Log #${logId}\n\n` +
+                      `Model: {{ model.name }}\n` +
+                      `Status: Completed Successfully\n` +
+                      `Duration: 45.2 seconds\n` +
+                      `Dataset: 200 samples\n\n` +
+                      `Metrics:\n` +
+                      `- Accuracy: 0.876\n` +
+                      `- Precision: 0.892\n` +
+                      `- Recall: 0.845\n` +
+                      `- F1 Score: 0.868\n\n` +
+                      `Training completed successfully at ${new Date().toLocaleTimeString()}`;
+    
+    document.getElementById('logDetails').innerHTML = 
+        `<pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; white-space: pre-wrap;">${logContent}</pre>`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('logModal'));
+    modal.show();
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

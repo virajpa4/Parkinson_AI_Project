@@ -1,0 +1,15 @@
+Django
+django-crispy-forms
+crispy-bootstrap5
+numpy
+pandas
+joblib
+scikit-learn
+scipy
+opencv-python
+librosa
+soundfile
+matplotlib
+seaborn
+pillow
+psycopg2-binary

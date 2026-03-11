@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="text-center mb-0">
+                        <i class="fas fa-clipboard-check"></i> Choose Your Assessment Type
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <p class="lead text-center mb-5">
+                        Select one of our AI-powered tasks to assess early signs of Parkinson's disease.
+                    </p>
+                    
+                    <div class="row">
+                        <!-- Spiral Drawing Card -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-draw-polygon fa-4x text-primary"></i>
+                                    </div>
+                                    <h4 class="card-title">Spiral Drawing</h4>
+                                    <p class="card-text">Draw a spiral to assess motor control, tremor frequency, and hand stability.</p>
+                                    <div class="mt-3">
+                                        <span class="badge bg-info">Time: 2 min</span>
+                                        <span class="badge bg-success ms-2">Accuracy: 92%</span>
+                                    </div>
+                                    <a href="{% url 'assessments:spiral_drawing' %}" class="btn btn-primary mt-3">
+                                        <i class="fas fa-play"></i> Start Spiral Test
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Voice Recording Card -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-microphone fa-4x text-primary"></i>
+                                    </div>
+                                    <h4 class="card-title">Voice Recording</h4>
+                                    <p class="card-text">Record your voice to analyze speech patterns, pitch variation, and articulation.</p>
+                                    <div class="mt-3">
+                                        <span class="badge bg-info">Time: 3 min</span>
+                                        <span class="badge bg-success ms-2">Accuracy: 89%</span>
+                                    </div>
+                                    <a href="{% url 'assessments:voice_recording' %}" class="btn btn-primary mt-3">
+                                        <i class="fas fa-play"></i> Start Voice Test
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Symptom Quiz Card -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-clipboard-list fa-4x text-primary"></i>
+                                    </div>
+                                    <h4 class="card-title">Symptom Quiz</h4>
+                                    <p class="card-text">Answer questions about your symptoms for comprehensive risk assessment.</p>
+                                    <div class="mt-3">
+                                        <span class="badge bg-info">Time: 5 min</span>
+                                        <span class="badge bg-success ms-2">Accuracy: 87%</span>
+                                    </div>
+                                    <a href="{% url 'assessments:symptom_quiz' %}" class="btn btn-primary mt-3">
+                                        <i class="fas fa-play"></i> Start Symptom Quiz
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- MRI Scan Card (Optional) -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100 border-secondary">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-brain fa-4x text-secondary"></i>
+                                    </div>
+                                    <h4 class="card-title">MRI Scan Analysis</h4>
+                                    <p class="card-text">Upload MRI scans for AI-powered brain structure analysis.</p>
+                                    <div class="mt-3">
+                                        <span class="badge bg-info">Time: 10 min</span>
+                                        <span class="badge bg-success ms-2">Accuracy: 95%</span>
+                                    </div>
+                                    <a href="{% url 'assessments:mri_scan' %}" class="btn btn-outline-secondary mt-3">
+                                        <i class="fas fa-play"></i> Start MRI Analysis
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Back Button -->
+                    <div class="text-center mt-4">
+                        <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

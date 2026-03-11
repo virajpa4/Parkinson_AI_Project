@@ -1,0 +1,105 @@
+<!-- assessments/templates/assessments/spiral_result.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h3><i class="fas fa-draw-polygon"></i> Spiral Drawing Analysis Results</h3>
+        </div>
+        <div class="card-body">
+            <!-- Image Display -->
+            {% if image_url %}
+            <div class="text-center mb-4">
+                <h5>Your Spiral Drawing:</h5>
+                <img src="{{ image_url }}" alt="Spiral Drawing" class="img-fluid rounded" style="max-height: 400px;">
+            </div>
+            {% endif %}
+
+            <!-- AI Analysis Results -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5><i class="fas fa-chart-line"></i> Analysis Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h6>Tremor Score</h6>
+                                    <h2 class="{% if tremor_score > 0.7 %}text-danger{% elif tremor_score > 0.4 %}text-warning{% else %}text-success{% endif %}">
+                                        {{ tremor_score|floatformat:3 }}
+                                    </h2>
+                                    <small class="text-muted">0-1 scale (higher indicates more tremor)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h6>Smoothness</h6>
+                                    <h2 class="{% if smoothness < 0.3 %}text-danger{% elif smoothness < 0.6 %}text-warning{% else %}text-success{% endif %}">
+                                        {{ smoothness|floatformat:3 }}
+                                    </h2>
+                                    <small class="text-muted">0-1 scale (higher is smoother)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h6>Confidence</h6>
+                                    <h2>{{ confidence|floatformat:1 }}%</h2>
+                                    <div class="progress mt-2">
+                                        <div class="progress-bar bg-info" style="width: {{ confidence }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Analysis -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5><i class="fas fa-stethoscope"></i> Clinical Interpretation</h5>
+                </div>
+                <div class="card-body">
+                    {% if ai_interpretation %}
+                        <p>{{ ai_interpretation }}</p>
+                    {% else %}
+                        <p>Based on the spiral analysis, 
+                        {% if tremor_score > 0.7 %}
+                            <span class="text-danger fw-bold">significant tremors were detected</span> which may indicate motor control issues.
+                        {% elif tremor_score > 0.4 %}
+                            <span class="text-warning fw-bold">moderate tremors were detected</span> suggesting possible early-stage concerns.
+                        {% else %}
+                            <span class="text-success fw-bold">minimal tremors were detected</span> indicating good motor control.
+                        {% endif %}
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'assessments:spiral' %}" class="btn btn-outline-success">
+                    <i class="fas fa-redo"></i> Draw New Spiral
+                </a>
+                <a href="{% url 'dashboard:dashboard' %}" class="btn btn-primary">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                {% if image_url %}
+                <a href="{{ image_url }}" download="spiral_drawing_{{ timestamp|date:'Ymd_His' }}.png" class="btn btn-info">
+                    <i class="fas fa-download"></i> Download Image
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-footer text-muted">
+            Analysis completed: {{ timestamp|date:"F j, Y, g:i a" }}
+        </div>
+    </div>
+</div>
+{% endblock %}

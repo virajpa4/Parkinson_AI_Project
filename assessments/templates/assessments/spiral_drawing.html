@@ -1,0 +1,435 @@
+{% extends 'base.html' %}
+
+{% block title %}Spiral Drawing Assessment - Parkinson AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .drawing-area {
+        border: 2px solid #667eea;
+        border-radius: 10px;
+        background-color: white;
+        cursor: crosshair;
+    }
+    .tool-button {
+        width: 40px;
+        height: 40px;
+        margin: 5px;
+        border-radius: 5px;
+        border: 1px solid #dee2e6;
+        background-color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    .tool-button.active {
+        background-color: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+    .color-option {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        margin: 5px;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+    .color-option.selected {
+        border-color: #333;
+        transform: scale(1.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="text-center mb-0">
+                        <i class="fas fa-draw-polygon"></i> Spiral Drawing Assessment
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Instructions -->
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle"></i> Instructions</h5>
+                        <ol class="mb-0">
+                            <li>Draw a spiral starting from the center and moving outward</li>
+                            <li>Try to keep your hand as steady as possible</li>
+                            <li>Draw at your normal speed - don't rush or go too slow</li>
+                            <li>Complete one full spiral (2-3 turns)</li>
+                            <li>The AI will analyze your drawing for tremors and consistency</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="row">
+                        <!-- Drawing Tools -->
+                        <div class="col-md-3">
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Drawing Tools</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex flex-wrap justify-content-center">
+                                        <button class="tool-button active" id="drawTool" title="Draw">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button class="tool-button" id="eraseTool" title="Eraser">
+                                            <i class="fas fa-eraser"></i>
+                                        </button>
+                                        <button class="tool-button" id="clearTool" title="Clear">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        <button class="tool-button" id="undoTool" title="Undo">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <label class="form-label">Line Width</label>
+                                        <input type="range" class="form-range" id="lineWidth" min="1" max="10" value="3">
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <label class="form-label">Line Color</label>
+                                        <div class="d-flex flex-wrap">
+                                            <div class="color-option selected" style="background-color: #667eea;" data-color="#667eea"></div>
+                                            <div class="color-option" style="background-color: #dc3545;" data-color="#dc3545"></div>
+                                            <div class="color-option" style="background-color: #28a745;" data-color="#28a745"></div>
+                                            <div class="color-option" style="background-color: #ffc107;" data-color="#ffc107"></div>
+                                            <div class="color-option" style="background-color: #000000;" data-color="#000000"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Timer -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Timer</h6>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div id="timerDisplay" class="display-4">00:00</div>
+                                    <button class="btn btn-sm btn-outline-primary mt-2" id="startTimer">
+                                        <i class="fas fa-play"></i> Start Timer
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Drawing Canvas -->
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <h5>Draw Your Spiral</h5>
+                                    <p class="text-muted">Start from the center dot</p>
+                                    
+                                    <!-- Drawing Canvas -->
+                                    <div class="position-relative mb-3">
+                                        <canvas id="drawingCanvas" class="drawing-area" width="500" height="500"></canvas>
+                                        <div class="position-absolute top-50 start-50 translate-middle">
+                                            <div class="text-center">
+                                                <div style="width: 10px; height: 10px; background-color: #667eea; border-radius: 50%; margin: 0 auto;"></div>
+                                                <small class="text-muted">Start here</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Example -->
+                                    <div class="mt-3">
+                                        <small class="text-muted">
+                                            <i class="fas fa-lightbulb"></i> 
+                                            Try to make your spiral as smooth as the example below
+                                        </small>
+                                        <div class="mt-2">
+                                            <i class="fas fa-draw-polygon fa-2x text-success"></i>
+                                            <small class="d-block text-success">Good: Smooth, consistent lines</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Upload Option -->
+                        <div class="col-md-3">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Alternative Option</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small text-muted">If you prefer, you can upload a photo of a spiral you drew on paper:</p>
+                                    
+                                    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                                        {% csrf_token %}
+                                        <div class="mb-3">
+                                            <label for="drawingImage" class="form-label">Upload Drawing</label>
+                                            <input class="form-control" type="file" id="drawingImage" name="drawing_image" accept="image/*">
+                                        </div>
+                                        <button type="submit" class="btn btn-outline-primary w-100">
+                                            <i class="fas fa-upload"></i> Upload & Analyze
+                                        </button>
+                                    </form>
+                                    
+                                    <hr>
+                                    
+                                    <!-- Submit Drawing -->
+                                    <div class="mt-3">
+                                        <form method="POST" id="drawingForm">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="drawing_data" id="drawingData">
+                                            <button type="submit" class="btn btn-primary w-100" id="submitDrawing">
+                                                <i class="fas fa-paper-plane"></i> Submit Digital Drawing
+                                            </button>
+                                        </form>
+                                    </div>
+                                    
+                                    <!-- Tips -->
+                                    <div class="mt-4">
+                                        <h6>Tips for Best Results:</h6>
+                                        <ul class="small">
+                                            <li>Rest your hand on the table</li>
+                                            <li>Use your dominant hand</li>
+                                            <li>Draw at a comfortable speed</li>
+                                            <li>Ensure good lighting</li>
+                                            <li>Keep your device steady</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Back Button -->
+                    <div class="text-center mt-4">
+                        <a href="{% url 'assessments:assessment_selection' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Assessments
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('drawingCanvas');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let points = [];
+    let undoStack = [];
+    let currentTool = 'draw';
+    let currentColor = '#667eea';
+    let currentWidth = 3;
+    let timerInterval;
+    let seconds = 0;
+    
+    // Initialize canvas
+    function initCanvas() {
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw grid
+        drawGrid();
+        
+        // Draw center dot
+        drawCenterDot();
+    }
+    
+    function drawGrid() {
+        ctx.strokeStyle = '#f0f0f0';
+        ctx.lineWidth = 1;
+        
+        // Vertical lines
+        for (let x = 0; x <= canvas.width; x += 50) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+        }
+        
+        // Horizontal lines
+        for (let y = 0; y <= canvas.height; y += 50) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+    }
+    
+    function drawCenterDot() {
+        ctx.fillStyle = '#667eea';
+        ctx.beginPath();
+        ctx.arc(canvas.width/2, canvas.height/2, 5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Initialize
+    initCanvas();
+    
+    // Drawing functions
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    
+    function startDrawing(e) {
+        drawing = true;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        points.push({x, y, color: currentColor, width: currentWidth});
+        
+        if (currentTool === 'draw') {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+        
+        // Start timer on first draw
+        if (seconds === 0) {
+            startTimer();
+        }
+    }
+    
+    function draw(e) {
+        if (!drawing) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        points.push({x, y, color: currentColor, width: currentWidth});
+        
+        if (currentTool === 'draw') {
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = currentWidth;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        } else if (currentTool === 'erase') {
+            // Eraser
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(x, y, currentWidth * 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+    
+    function stopDrawing() {
+        if (drawing) {
+            drawing = false;
+            ctx.beginPath();
+            
+            // Save state for undo
+            if (points.length > 0) {
+                undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            }
+            
+            // Save drawing data
+            document.getElementById('drawingData').value = JSON.stringify(points);
+        }
+    }
+    
+    // Tool buttons
+    document.getElementById('drawTool').addEventListener('click', function() {
+        currentTool = 'draw';
+        updateToolButtons();
+    });
+    
+    document.getElementById('eraseTool').addEventListener('click', function() {
+        currentTool = 'erase';
+        updateToolButtons();
+    });
+    
+    document.getElementById('clearTool').addEventListener('click', function() {
+        if (confirm('Clear the entire drawing?')) {
+            initCanvas();
+            points = [];
+            undoStack = [];
+            document.getElementById('drawingData').value = '';
+        }
+    });
+    
+    document.getElementById('undoTool').addEventListener('click', function() {
+        if (undoStack.length > 0) {
+            const imageData = undoStack.pop();
+            ctx.putImageData(imageData, 0, 0);
+            points = points.slice(0, Math.max(0, points.length - 10));
+        }
+    });
+    
+    function updateToolButtons() {
+        document.querySelectorAll('.tool-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        if (currentTool === 'draw') {
+            document.getElementById('drawTool').classList.add('active');
+        } else {
+            document.getElementById('eraseTool').classList.add('active');
+        }
+    }
+    
+    // Color selection
+    document.querySelectorAll('.color-option').forEach(colorBtn => {
+        colorBtn.addEventListener('click', function() {
+            document.querySelectorAll('.color-option').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            this.classList.add('selected');
+            currentColor = this.getAttribute('data-color');
+        });
+    });
+    
+    // Line width
+    document.getElementById('lineWidth').addEventListener('input', function() {
+        currentWidth = this.value;
+    });
+    
+    // Timer
+    function startTimer() {
+        if (!timerInterval) {
+            timerInterval = setInterval(() => {
+                seconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+    }
+    
+    function updateTimerDisplay() {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        const display = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        document.getElementById('timerDisplay').textContent = display;
+    }
+    
+    document.getElementById('startTimer').addEventListener('click', startTimer);
+    
+    // Form submission
+    document.getElementById('submitDrawing').addEventListener('click', function(e) {
+        if (points.length < 10) {
+            e.preventDefault();
+            alert('Please draw a complete spiral before submitting.');
+            return false;
+        }
+        
+        // Save final drawing data
+        document.getElementById('drawingData').value = JSON.stringify(points);
+        
+        // Show loading
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+        this.disabled = true;
+        
+        return true;
+    });
+});
+</script>
+{% endblock %}

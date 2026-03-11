@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <!-- Hero Section -->
+    <div class="hero-section text-white py-5">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h1 class="display-4 fw-bold">Early Parkinson's Disease Detection System</h1>
+                    <p class="lead">Advanced machine learning technology that analyzes speech patterns, spiral drawings, and posture videos to provide early detection of Parkinson's disease symptoms.</p>
+                    <a href="{% url 'assessments:assessment_selection' %}" class="btn btn-light btn-lg mt-3">
+                        <i class="fas fa-play-circle"></i> Start Assessment
+                    </a>
+                    <a href="{% url 'users:register' %}" class="btn btn-outline-light btn-lg mt-3 ms-2">
+                        <i class="fas fa-user-plus"></i> Get Started
+                    </a>
+                </div>
+                <div class="col-md-6">
+                    <div class="text-center">
+                        <i class="fas fa-brain fa-10x" style="opacity: 0.8;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div class="container my-5">
+        <div class="row text-center">
+            <div class="col-md-4 mb-4">
+                <div class="stat-card p-4 border rounded shadow-sm">
+                    <h2 class="display-4 text-primary">94%</h2>
+                    <p class="text-muted">Accuracy Rate</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="stat-card p-4 border rounded shadow-sm">
+                    <h2 class="display-4 text-primary">5min</h2>
+                    <p class="text-muted">Assessment Time</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="stat-card p-4 border rounded shadow-sm">
+                    <h2 class="display-4 text-primary">10K+</h2>
+                    <p class="text-muted">Tests Completed</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assessment Methods -->
+    <div class="container my-5">
+        <h2 class="text-center mb-5">Three Simple Assessment Methods</h2>
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow">
+                    <div class="card-body text-center">
+                        <i class="fas fa-microphone fa-3x text-primary mb-3"></i>
+                        <h4 class="card-title">Speech Analysis</h4>
+                        <p class="card-text">Analyzes voice tremors, speech rhythm, and pronunciation patterns to detect Parkinson's symptoms.</p>
+                        <a href="{% url 'assessments:voice_recording' %}" class="btn btn-outline-primary mt-2">
+                            Try Voice Assessment
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow">
+                    <div class="card-body text-center">
+                        <i class="fas fa-draw-polygon fa-3x text-primary mb-3"></i>
+                        <h4 class="card-title">Spiral Drawing</h4>
+                        <p class="card-text">Evaluates motor response tremors by assessing the smoothness and consistency of spiral drawings.</p>
+                        <a href="{% url 'assessments:spiral_drawing' %}" class="btn btn-outline-primary mt-2">
+                            Try Spiral Assessment
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow">
+                    <div class="card-body text-center">
+                        <i class="fas fa-clipboard-list fa-3x text-primary mb-3"></i>
+                        <h4 class="card-title">Symptom Quiz</h4>
+                        <p class="card-text">Answer questions about symptoms for AI-powered analysis and risk assessment.</p>
+                        <a href="{% url 'assessments:symptom_quiz' %}" class="btn btn-outline-primary mt-2">
+                            Take Symptom Quiz
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Center button for all assessments -->
+        <div class="text-center mt-4">
+            <a href="{% url 'assessments:assessment_selection' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-list"></i> View All Assessment Options
+            </a>
+            <a href="{% url 'users:register' %}" class="btn btn-outline-primary btn-lg ms-2">
+                <i class="fas fa-user-plus"></i> Create Free Account
+            </a>
+        </div>
+    </div>
+    
+    <!-- Call to Action -->
+    <div class="bg-light py-5">
+        <div class="container text-center">
+            <h2 class="mb-4">Ready to Take Control of Your Health?</h2>
+            <p class="lead mb-4">Join thousands of users who are monitoring their Parkinson's risk with our AI-powered platform.</p>
+            <a href="{% url 'users:register' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-rocket"></i> Get Started Now
+            </a>
+            <a href="{% url 'users:login' %}" class="btn btn-outline-primary btn-lg ms-2">
+                <i class="fas fa-sign-in-alt"></i> Login to Existing Account
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,637 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Doctor Dashboard - Parkinson AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .patient-card {
+        transition: all 0.3s;
+        border-left: 5px solid;
+    }
+    .patient-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .risk-low { border-left-color: #28a745; }
+    .risk-medium { border-left-color: #ffc107; }
+    .risk-high { border-left-color: #fd7e14; }
+    .risk-critical { border-left-color: #dc3545; }
+    
+    .patient-status {
+        font-size: 0.8em;
+        padding: 3px 8px;
+        border-radius: 12px;
+    }
+    .status-active { background-color: #d4edda; color: #155724; }
+    .status-inactive { background-color: #f8d7da; color: #721c24; }
+    .status-monitoring { background-color: #fff3cd; color: #856404; }
+    
+    .stat-card {
+        text-align: center;
+        padding: 20px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin-bottom: 20px;
+    }
+    .stat-value {
+        font-size: 2.5em;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    
+    .alert-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        font-size: 0.7em;
+    }
+    
+    .quick-action-btn {
+        padding: 8px 15px;
+        margin: 5px;
+        border-radius: 20px;
+        font-size: 0.9em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h2">
+                <i class="fas fa-user-md text-primary"></i> Doctor Dashboard
+            </h1>
+            <p class="text-muted">Welcome, Dr. {{ user.get_full_name|default:user.username }}! Monitor your patients' Parkinson's progression.</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-cog"></i> Quick Actions
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#addPatientModal">
+                        <i class="fas fa-user-plus"></i> Add New Patient
+                    </a></li>
+                    <li><a class="dropdown-item" href="#">
+                        <i class="fas fa-file-medical"></i> Generate Reports
+                    </a></li>
+                    <li><a class="dropdown-item" href="#">
+                        <i class="fas fa-bell"></i> View All Alerts
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'dashboard:progress_charts' %}">
+                        <i class="fas fa-chart-line"></i> Analytics Dashboard
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-users fa-2x"></i>
+                </div>
+                <div class="stat-value">{{ total_patients }}</div>
+                <div class="stat-label">Total Patients</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #4fd1c5 0%, #38b2ac 100%);">
+                <div class="stat-icon">
+                    <i class="fas fa-clipboard-check fa-2x"></i>
+                </div>
+                <div class="stat-value">
+                    {% with total_assessments=0 %}
+                        {% for patient in patients_data %}
+                            {% if patient.latest_assessment %}
+                                {{ total_assessments|add:1 }}
+                            {% endif %}
+                        {% endfor %}
+                        {{ total_assessments }}
+                    {% endwith %}
+                </div>
+                <div class="stat-label">Recent Assessments</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                </div>
+                <div class="stat-value">
+                    {% with total_alerts=0 %}
+                        {% for patient in patients_data %}
+                            {{ total_alerts|add:patient.unread_alerts }}
+                        {% endfor %}
+                        {{ total_alerts }}
+                    {% endwith %}
+                </div>
+                <div class="stat-label">Pending Alerts</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%);">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-line fa-2x"></i>
+                </div>
+                <div class="stat-value">
+                    {% if patients_data %}
+                        {{ patients_data|length|add:"-1" }}+
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+                <div class="stat-label">Active Monitoring</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Alerts -->
+    {% if system_alerts %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bell"></i> System Alerts
+                        <span class="badge bg-danger">{{ system_alerts|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for alert in system_alerts %}
+                    <div class="alert alert-{% if alert.priority == 'critical' %}danger{% elif alert.priority == 'high' %}warning{% else %}info{% endif %}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ alert.title }}</strong>
+                                <p class="mb-0 small">{{ alert.message }}</p>
+                                <small class="text-muted">{{ alert.created_at|timesince }} ago</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-dark" onclick="markAlertRead({{ alert.id }})">
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Patient List -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-injured"></i> My Patients
+                        <span class="badge bg-primary ms-2">{{ total_patients }}</span>
+                    </h5>
+                    <div class="input-group" style="width: 300px;">
+                        <input type="text" class="form-control" placeholder="Search patients..." id="patientSearch">
+                        <button class="btn btn-outline-secondary" type="button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if patients_data %}
+                    <div class="row" id="patientGrid">
+                        {% for patient_info in patients_data %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card patient-card 
+                                {% if patient_info.latest_assessment %}
+                                    {% if patient_info.latest_assessment.severity_score < 30 %}risk-low
+                                    {% elif patient_info.latest_assessment.severity_score < 60 %}risk-medium
+                                    {% elif patient_info.latest_assessment.severity_score < 80 %}risk-high
+                                    {% else %}risk-critical{% endif %}
+                                {% else %}risk-low{% endif %}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div>
+                                            <h5 class="card-title mb-1">
+                                                {{ patient_info.patient.get_full_name|default:patient_info.patient.username }}
+                                            </h5>
+                                            <p class="card-text small text-muted mb-0">
+                                                ID: {{ patient_info.patient.id }} | 
+                                                Age: {% if patient_info.patient.userprofile.date_of_birth %}
+                                                    {{ patient_info.patient.userprofile.date_of_birth|timesince }}
+                                                {% else %}N/A{% endif %}
+                                            </p>
+                                        </div>
+                                        <div class="position-relative">
+                                            {% if patient_info.unread_alerts > 0 %}
+                                            <span class="alert-badge badge bg-danger">{{ patient_info.unread_alerts }}</span>
+                                            {% endif %}
+                                            <span class="patient-status status-active">
+                                                {% if patient_info.last_activity %}
+                                                    Active
+                                                {% else %}
+                                                    Inactive
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Latest Assessment -->
+                                    {% if patient_info.latest_assessment %}
+                                    <div class="mb-3">
+                                        <h6>Latest Assessment</h6>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <small class="text-muted">{{ patient_info.latest_assessment.date_taken|date:"M d, Y" }}</small>
+                                                <div class="mt-1">
+                                                    <span class="badge 
+                                                        {% if patient_info.latest_assessment.parkinson_prediction %}bg-danger{% else %}bg-success{% endif %}">
+                                                        {{ patient_info.latest_assessment.get_assessment_type_display }}
+                                                    </span>
+                                                    <span class="badge bg-info ms-1">
+                                                        Score: {{ patient_info.latest_assessment.severity_score|floatformat:1 }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="display-6">
+                                                    {% if patient_info.latest_assessment.severity_score < 30 %}
+                                                        😊
+                                                    {% elif patient_info.latest_assessment.severity_score < 60 %}
+                                                        😐
+                                                    {% elif patient_info.latest_assessment.severity_score < 80 %}
+                                                        😟
+                                                    {% else %}
+                                                        😨
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Progress Bar -->
+                                        <div class="mt-2">
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar 
+                                                    {% if patient_info.latest_assessment.severity_score < 30 %}bg-success
+                                                    {% elif patient_info.latest_assessment.severity_score < 60 %}bg-warning
+                                                    {% elif patient_info.latest_assessment.severity_score < 80 %}bg-orange
+                                                    {% else %}bg-danger{% endif %}" 
+                                                     style="width: {{ patient_info.latest_assessment.severity_score }}%">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">
+                                                Risk Level: 
+                                                {% if patient_info.latest_assessment.severity_score < 30 %}Low
+                                                {% elif patient_info.latest_assessment.severity_score < 60 %}Moderate
+                                                {% elif patient_info.latest_assessment.severity_score < 80 %}High
+                                                {% else %}Critical{% endif %}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <div class="alert alert-info mb-3">
+                                        <i class="fas fa-info-circle"></i>
+                                        No assessments yet. Encourage patient to take their first assessment.
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- Quick Actions -->
+                                    <div class="d-flex justify-content-between">
+                                        <a href="{% url 'dashboard:patient_detail' patient_info.patient.id %}" 
+                                           class="btn btn-sm btn-outline-primary quick-action-btn">
+                                            <i class="fas fa-chart-line"></i> View Details
+                                        </a>
+                                        <a href="{% url 'dashboard:send_alert' patient_info.patient.id %}" 
+                                           class="btn btn-sm btn-outline-warning quick-action-btn">
+                                            <i class="fas fa-bell"></i> Send Alert
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-success quick-action-btn" 
+                                                onclick="scheduleFollowup({{ patient_info.patient.id }})">
+                                            <i class="fas fa-calendar-plus"></i> Follow-up
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Last Activity -->
+                                    {% if patient_info.last_activity %}
+                                    <div class="mt-3 text-end">
+                                        <small class="text-muted">
+                                            Last active: {{ patient_info.last_activity|timesince }} ago
+                                        </small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-user-md fa-4x text-muted mb-3"></i>
+                        <h4>No Patients Assigned</h4>
+                        <p class="text-muted">You don't have any patients assigned to you yet.</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPatientModal">
+                            <i class="fas fa-user-plus"></i> Add Your First Patient
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Assessments</h5>
+                </div>
+                <div class="card-body">
+                    {% if patients_data %}
+                    <div class="list-group">
+                        {% for patient_info in patients_data|slice:":5" %}
+                            {% if patient_info.latest_assessment %}
+                            <a href="{% url 'dashboard:patient_detail' patient_info.patient.id %}" 
+                               class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ patient_info.patient.get_full_name|default:patient_info.patient.username }}</h6>
+                                    <small>{{ patient_info.latest_assessment.date_taken|timesince }} ago</small>
+                                </div>
+                                <p class="mb-1">
+                                    {{ patient_info.latest_assessment.get_assessment_type_display }} - 
+                                    Score: {{ patient_info.latest_assessment.severity_score|floatformat:1 }}
+                                </p>
+                                <small>
+                                    {% if patient_info.latest_assessment.parkinson_prediction %}
+                                        <span class="text-danger">Parkinson's indicators detected</span>
+                                    {% else %}
+                                        <span class="text-success">No significant indicators</span>
+                                    {% endif %}
+                                </small>
+                            </a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-clipboard-list fa-3x text-muted"></i>
+                        <p class="text-muted mt-2">No assessment data available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <div class="text-center">
+                                <div class="display-6 text-primary">
+                                    {% with high_risk=0 %}
+                                        {% for patient_info in patients_data %}
+                                            {% if patient_info.latest_assessment and patient_info.latest_assessment.severity_score >= 60 %}
+                                                {{ high_risk|add:1 }}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {{ high_risk }}
+                                    {% endwith %}
+                                </div>
+                                <small class="text-muted">High Risk Patients</small>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="text-center">
+                                <div class="display-6 text-success">
+                                    {% with active=0 %}
+                                        {% for patient_info in patients_data %}
+                                            {% if patient_info.last_activity %}
+                                                {{ active|add:1 }}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {{ active }}
+                                    {% endwith %}
+                                </div>
+                                <small class="text-muted">Active This Week</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="display-6 text-warning">
+                                    {% with pending=0 %}
+                                        {% for patient_info in patients_data %}
+                                            {{ pending|add:patient_info.unread_alerts }}
+                                        {% endfor %}
+                                        {{ pending }}
+                                    {% endwith %}
+                                </div>
+                                <small class="text-muted">Pending Alerts</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="display-6 text-info">
+                                    {{ total_patients }}
+                                </div>
+                                <small class="text-muted">Total Under Care</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6>Assessment Types</h6>
+                        <div class="small">
+                            {% with spiral=0 voice=0 quiz=0 %}
+                                {% for patient_info in patients_data %}
+                                    {% if patient_info.latest_assessment %}
+                                        {% if patient_info.latest_assessment.assessment_type == 'spiral' %}
+                                            {{ spiral|add:1 }}
+                                        {% elif patient_info.latest_assessment.assessment_type == 'voice' %}
+                                            {{ voice|add:1 }}
+                                        {% elif patient_info.latest_assessment.assessment_type == 'quiz' %}
+                                            {{ quiz|add:1 }}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>Spiral Drawing</span>
+                                    <span>{{ spiral }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>Voice Analysis</span>
+                                    <span>{{ voice }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Symptom Quiz</span>
+                                    <span>{{ quiz }}</span>
+                                </div>
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Patient Modal -->
+<div class="modal fade" id="addPatientModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Patient</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addPatientForm">
+                    <div class="mb-3">
+                        <label class="form-label">Patient Email or Username</label>
+                        <input type="text" class="form-control" placeholder="Enter patient's email or username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Initial Notes</label>
+                        <textarea class="form-control" rows="3" placeholder="Any initial observations or notes..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Monitoring Level</label>
+                        <select class="form-select">
+                            <option value="standard">Standard Monitoring</option>
+                            <option value="intensive">Intensive Monitoring</option>
+                            <option value="research">Research Participant</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addPatient()">Add Patient</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Search patients
+document.getElementById('patientSearch').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const patientCards = document.querySelectorAll('#patientGrid .col-md-6');
+    
+    patientCards.forEach(card => {
+        const patientName = card.querySelector('.card-title').textContent.toLowerCase();
+        const patientId = card.querySelector('.card-text').textContent.toLowerCase();
+        
+        if (patientName.includes(searchTerm) || patientId.includes(searchTerm)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
+
+// Mark alert as read
+function markAlertRead(alertId) {
+    fetch(`/dashboard/alert/read/${alertId}/`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove alert from UI
+            const alertElement = document.querySelector(`[onclick="markAlertRead(${alertId})"]`).closest('.alert');
+            if (alertElement) {
+                alertElement.remove();
+            }
+            
+            // Update badge count
+            const badge = document.querySelector('.badge.bg-danger');
+            if (badge) {
+                const currentCount = parseInt(badge.textContent);
+                if (currentCount > 1) {
+                    badge.textContent = currentCount - 1;
+                } else {
+                    badge.remove();
+                }
+            }
+        }
+    });
+}
+
+// Schedule follow-up
+function scheduleFollowup(patientId) {
+    const date = prompt('Enter follow-up date (YYYY-MM-DD):', 
+                       new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    
+    if (date) {
+        fetch(`/dashboard/api/schedule-followup/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                patient_id: patientId,
+                followup_date: date,
+                notes: 'Scheduled from doctor dashboard'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Follow-up scheduled successfully!');
+            } else {
+                alert('Error scheduling follow-up: ' + data.error);
+            }
+        });
+    }
+}
+
+// Add new patient (simulated)
+function addPatient() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addPatientModal'));
+    
+    // Simulate API call
+    setTimeout(() => {
+        alert('Patient added successfully! In a real implementation, this would connect the patient to your account.');
+        modal.hide();
+        // Reload to show new patient
+        location.reload();
+    }, 1000);
+}
+
+// CSRF token helper
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(tooltip => {
+        new bootstrap.Tooltip(tooltip);
+    });
+});
+</script>
+{% endblock %}

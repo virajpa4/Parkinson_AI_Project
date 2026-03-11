@@ -1,0 +1,2 @@
+virtual enviroment Active Command:- .\venv\Scripts\activate
+RunServer Command: python manage.py runserver 8080

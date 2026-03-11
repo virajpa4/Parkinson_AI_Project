@@ -1,0 +1,418 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Patient Dashboard - Parkinson AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .risk-low { background-color: #d4edda; color: #155724; }
+    .risk-medium { background-color: #fff3cd; color: #856404; }
+    .risk-high { background-color: #f8d7da; color: #721c24; }
+    .risk-critical { background-color: #721c24; color: white; }
+    
+    .progress-ring {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .card-hover:hover {
+        transform: translateY(-5px);
+        transition: transform 0.3s;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .alert-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Dashboard Header -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h1 class="h2">
+                <i class="fas fa-tachometer-alt text-primary"></i> 
+                Patient Dashboard
+            </h1>
+            <p class="text-muted">Welcome back, {{ user.get_full_name|default:user.username }}! Track your Parkinson's progression.</p>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{% url 'assessments:assessment_selection' %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle"></i> New Assessment
+            </a>
+            <a href="{% url 'dashboard:progress_charts' %}" class="btn btn-outline-primary ms-2">
+                <i class="fas fa-chart-line"></i> View Progress Charts
+            </a>
+        </div>
+    </div>
+    
+    <!-- Alerts Section -->
+    {% if alerts %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bell"></i> Recent Alerts
+                        <span class="badge bg-danger">{{ alerts|length }} new</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for alert in alerts %}
+                    <div class="alert alert-{% if alert.priority == 'critical' %}danger{% elif alert.priority == 'high' %}warning{% else %}info{% endif %} d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ alert.title }}</strong>
+                            <p class="mb-0 small">{{ alert.message }}</p>
+                            <small class="text-muted">{{ alert.created_at|timesince }} ago</small>
+                        </div>
+                        <a href="{% url 'dashboard:mark_alert_read' alert.id %}" class="btn btn-sm btn-outline-dark">
+                            Mark Read
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Risk Score & Stats -->
+    <div class="row mb-4">
+        <!-- Overall Risk Score -->
+        <div class="col-md-4 mb-4">
+            <div class="card card-hover h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Overall Risk Score</h5>
+                </div>
+                <div class="card-body text-center">
+                    {% with score=dashboard.overall_risk_score %}
+                    <div class="progress-ring mx-auto mb-3">
+                        <div class="progress-ring__circle" 
+                            style="stroke: {% if score < 30 %}#28a745{% elif score < 60 %}#ffc107{% elif score < 80 %}#fd7e14{% else %}#dc3545{% endif %};"
+                            stroke-dasharray="{{ score }}, 100">
+                        </div>
+                        <span class="progress-ring__text display-4 fw-bold">{{ score|floatformat:0 }}</span>
+                    </div>
+                    
+                    <!-- FIXED: Proper if/else structure -->
+                    {% if score < 30 %}
+                        <div class="risk-low p-2 rounded">
+                            <strong>Low Risk</strong>
+                        </div>
+                    {% elif score < 60 %}
+                        <div class="risk-medium p-2 rounded">
+                            <strong>Moderate Risk</strong>
+                        </div>
+                    {% elif score < 80 %}
+                        <div class="risk-high p-2 rounded">
+                            <strong>High Risk</strong>
+                        </div>
+                    {% else %}
+                        <div class="risk-critical p-2 rounded">
+                            <strong>Critical Risk</strong>
+                        </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div> 
+        <!-- Quick Stats -->
+        <div class="col-md-8">
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card card-hover h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">Assessment History</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h2 class="display-4">{{ dashboard.total_assessments }}</h2>
+                                    <p class="text-muted mb-0">Total Assessments</p>
+                                </div>
+                                <i class="fas fa-clipboard-list fa-3x text-primary"></i>
+                            </div>
+                            {% if dashboard.last_assessment_date %}
+                            <small class="text-muted">
+                                Last assessment: {{ dashboard.last_assessment_date|date:"M d, Y" }}
+                            </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-4">
+                    <div class="card card-hover h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">Progress Goals</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h2 class="display-4">{{ goals.count }}</h2>
+                                    <p class="text-muted mb-0">Active Goals</p>
+                                </div>
+                                <i class="fas fa-bullseye fa-3x text-success"></i>
+                            </div>
+                            {% if goals %}
+                            <div class="mt-3">
+                                {% for goal in goals|slice:":2" %}
+                                <div class="mb-2">
+                                    <small>{{ goal.title }}</small>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar bg-success" 
+                                             style="width: {{ goal.progress_percentage }}%">
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Assessments -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Assessments</h5>
+                    <a href="{% url 'assessments:history' %}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if assessments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Assessment Type</th>
+                                    <th>Severity Score</th>
+                                    <th>Prediction</th>
+                                    <th>Stage</th>
+                                    <th>Confidence</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assessment in assessments %}
+                                <tr>
+                                    <td>{{ assessment.date_taken|date:"M d, Y" }}</td>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            {{ assessment.get_assessment_type_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 10px;">
+                                            <div class="progress-bar {% if assessment.severity_score < 30 %}bg-success{% elif assessment.severity_score < 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                                 style="width: {{ assessment.severity_score }}%">
+                                            </div>
+                                        </div>
+                                        <small>{{ assessment.severity_score|floatformat:1 }}</small>
+                                    </td>
+                                    <td>
+                                        {% if assessment.parkinson_prediction %}
+                                            <span class="badge bg-danger">Positive</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Negative</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if assessment.parkinson_stage %}
+                                            Stage {{ assessment.parkinson_stage }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ assessment.confidence_score|floatformat:1 }}%</td>
+                                    <td>
+                                        <a href="{% url 'assessments:assessment_result' assessment.id %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            View Details
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No assessments yet. Take your first assessment!</p>
+                        <a href="{% url 'assessments:assessment_selection' %}" class="btn btn-primary">
+                            Start First Assessment
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Treatment Plans & Goals -->
+    <div class="row">
+        <!-- Treatment Plans -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Active Treatment Plans</h5>
+                    {% if treatment_plans %}
+                    <span class="badge bg-primary">{{ treatment_plans.count }}</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if treatment_plans %}
+                    {% for plan in treatment_plans|slice:":3" %}
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title">{{ plan.title }}</h6>
+                            <p class="card-text small text-muted">{{ plan.description|truncatechars:100 }}</p>
+                            {% if plan.follow_up_date %}
+                            <small class="text-muted">
+                                Follow-up: {{ plan.follow_up_date|date:"M d, Y" }}
+                            </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-medical fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No active treatment plans</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress Goals -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Progress Goals</h5>
+                    <a href="{% url 'dashboard:add_goal' %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus"></i> Add Goal
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if goals %}
+                    {% for goal in goals|slice:":3" %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <strong>{{ goal.title }}</strong>
+                            <span>{{ goal.progress_percentage|floatformat:0 }}%</span>
+                        </div>
+                        <div class="progress mb-2" style="height: 10px;">
+                            <div class="progress-bar 
+                                {% if goal.progress_percentage < 30 %}bg-danger
+                                {% elif goal.progress_percentage < 70 %}bg-warning
+                                {% else %}bg-success{% endif %}" 
+                                 style="width: {{ goal.progress_percentage }}%">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small>{{ goal.current_value }} / {{ goal.target_value }} {{ goal.unit }}</small>
+                            <small>Target: {{ goal.target_date|date:"M d, Y" }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-bullseye fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No progress goals set</p>
+                        <a href="{% url 'dashboard:add_goal' %}" class="btn btn-primary">
+                            Set Your First Goal
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Update goal progress
+function updateGoalProgress(goalId) {
+    const currentValue = prompt('Enter current value:');
+    if (currentValue) {
+        fetch(`/dashboard/update-goal/${goalId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: `current_value=${currentValue}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error updating goal');
+            }
+        });
+    }
+}
+
+// Mark alert as read
+function markAlertRead(alertId) {
+    fetch(`/dashboard/alert/read/${alertId}/`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(`alert-${alertId}`).remove();
+        }
+    });
+}
+
+// CSRF token helper
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Initialize progress rings
+document.addEventListener('DOMContentLoaded', function() {
+    const progressRings = document.querySelectorAll('.progress-ring__circle');
+    progressRings.forEach(ring => {
+        const radius = ring.r.baseVal.value;
+        const circumference = radius * 2 * Math.PI;
+        
+        ring.style.strokeDasharray = `${circumference} ${circumference}`;
+        ring.style.strokeDashoffset = circumference;
+        
+        const offset = circumference - (parseFloat(ring.getAttribute('stroke-dasharray').split(',')[0]) / 100 * circumference);
+        ring.style.strokeDashoffset = offset;
+    });
+});
+</script>
+{% endblock %}

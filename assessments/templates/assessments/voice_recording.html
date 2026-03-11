@@ -1,0 +1,411 @@
+{% extends 'base.html' %}
+
+{% block title %}Voice Recording Assessment - Parkinson AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .recording-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: #dc3545;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    .visualizer {
+        height: 100px;
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        margin: 20px 0;
+        position: relative;
+        overflow: hidden;
+    }
+    .waveform {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+    .instruction-step {
+        padding: 15px;
+        border-left: 4px solid #667eea;
+        margin-bottom: 15px;
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="text-center mb-0">
+                        <i class="fas fa-microphone"></i> Voice Recording Assessment
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Instructions -->
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle"></i> Instructions</h5>
+                        <p class="mb-0">
+                            Record your voice while reading the provided text. The AI will analyze speech patterns
+                            for potential Parkinson's disease symptoms like voice tremors and articulation issues.
+                        </p>
+                    </div>
+                    
+                    <!-- Recording Interface -->
+                    <div class="text-center mb-5">
+                        <!-- Visualizer -->
+                        <div class="visualizer" id="visualizer">
+                            <canvas id="waveform" class="waveform"></canvas>
+                        </div>
+                        
+                        <!-- Recording Status -->
+                        <div class="d-flex justify-content-center align-items-center mb-4" id="recordingStatus">
+                            <div class="recording-indicator me-2" id="recordingIndicator" style="display: none;"></div>
+                            <h4 id="statusText">Ready to record</h4>
+                        </div>
+                        
+                        <!-- Timer -->
+                        <div class="display-4 mb-4" id="timer">00:00</div>
+                        
+                        <!-- Recording Controls -->
+                        <div class="d-flex justify-content-center mb-4">
+                            <button class="btn btn-success btn-lg me-3" id="startRecording">
+                                <i class="fas fa-microphone"></i> Start Recording
+                            </button>
+                            <button class="btn btn-danger btn-lg me-3" id="stopRecording" disabled>
+                                <i class="fas fa-stop"></i> Stop
+                            </button>
+                            <button class="btn btn-warning btn-lg" id="playRecording" disabled>
+                                <i class="fas fa-play"></i> Playback
+                            </button>
+                        </div>
+                        
+                        <!-- Audio Player -->
+                        <audio id="audioPlayer" controls style="display: none;"></audio>
+                    </div>
+                    
+                    <!-- Text to Read -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Text to Read Aloud</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="instruction-step">
+                                <h6>Step 1: Read this text clearly and naturally</h6>
+                            </div>
+                            
+                            <div class="p-3 bg-light rounded">
+                                <p class="lead text-center">
+                                    "The quick brown fox jumps over the lazy dog. 
+                                    She sells seashells by the seashore. 
+                                    Peter Piper picked a peck of pickled peppers. 
+                                    How much wood would a woodchuck chuck if a woodchuck could chuck wood?"
+                                </p>
+                            </div>
+                            
+                            <div class="instruction-step mt-3">
+                                <h6>Step 2: Sustain this sound for 5 seconds</h6>
+                                <p class="mb-0">Say "aaaaah" at your normal pitch and volume</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tips -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Tips for Best Results</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <ul>
+                                        <li>Find a quiet environment</li>
+                                        <li>Speak at normal volume</li>
+                                        <li>Hold microphone 6-8 inches from mouth</li>
+                                        <li>Use a stable internet connection</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <ul>
+                                        <li>Don't rush - speak naturally</li>
+                                        <li>Take a deep breath before starting</li>
+                                        <li>Ensure good microphone quality</li>
+                                        <li>Avoid background noise</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Upload/Submit -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Submit Recording</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" enctype="multipart/form-data" id="voiceForm">
+                                {% csrf_token %}
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Or upload existing recording</label>
+                                            <input class="form-control" type="file" name="audio_file" accept="audio/*">
+                                            <small class="text-muted">Supported formats: MP3, WAV, M4A</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Recording duration</label>
+                                            <input type="text" class="form-control" id="durationDisplay" value="Not recorded" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <input type="hidden" name="audio_data" id="audioData">
+                                
+                                <div class="text-center">
+                                    <button type="submit" class="btn btn-primary btn-lg" id="submitButton" disabled>
+                                        <i class="fas fa-paper-plane"></i> Submit for Analysis
+                                    </button>
+                                    <a href="{% url 'assessments:assessment_selection' %}" class="btn btn-outline-secondary btn-lg ms-2">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+    let timerInterval;
+    let seconds = 0;
+    let audioContext;
+    let analyser;
+    let canvasContext;
+    
+    // Initialize
+    const timerDisplay = document.getElementById('timer');
+    const startBtn = document.getElementById('startRecording');
+    const stopBtn = document.getElementById('stopRecording');
+    const playBtn = document.getElementById('playRecording');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const recordingIndicator = document.getElementById('recordingIndicator');
+    const statusText = document.getElementById('statusText');
+    const submitButton = document.getElementById('submitButton');
+    const durationDisplay = document.getElementById('durationDisplay');
+    const canvas = document.getElementById('waveform');
+    
+    if (canvas) {
+        canvasContext = canvas.getContext('2d');
+        canvas.width = canvas.parentElement.offsetWidth;
+        canvas.height = canvas.parentElement.offsetHeight;
+    }
+    
+    // Start recording
+    startBtn.addEventListener('click', async function() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // Setup audio context for visualization
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+            analyser.fftSize = 256;
+            
+            // Setup media recorder
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            
+            mediaRecorder.ondataavailable = function(event) {
+                audioChunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = function() {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPlayer.src = audioUrl;
+                
+                // Enable playback button
+                playBtn.disabled = false;
+                submitButton.disabled = false;
+                
+                // Convert blob to base64 for form submission
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = function() {
+                    document.getElementById('audioData').value = reader.result;
+                };
+                
+                // Update duration display
+                const duration = seconds;
+                const minutes = Math.floor(duration / 60);
+                const remainingSeconds = duration % 60;
+                durationDisplay.value = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+            };
+            
+            // Start recording
+            mediaRecorder.start();
+            isRecording = true;
+            
+            // Update UI
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            recordingIndicator.style.display = 'block';
+            statusText.textContent = 'Recording...';
+            
+            // Start timer
+            startTimer();
+            
+            // Start visualization
+            visualize();
+            
+        } catch (error) {
+            console.error('Error accessing microphone:', error);
+            alert('Could not access microphone. Please check permissions and try again.');
+        }
+    });
+    
+    // Stop recording
+    stopBtn.addEventListener('click', function() {
+        if (mediaRecorder && isRecording) {
+            mediaRecorder.stop();
+            isRecording = false;
+            
+            // Stop all tracks
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            
+            // Update UI
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            recordingIndicator.style.display = 'none';
+            statusText.textContent = 'Recording complete';
+            
+            // Stop timer
+            stopTimer();
+            
+            // Stop visualization
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+        }
+    });
+    
+    // Play recording
+    playBtn.addEventListener('click', function() {
+        audioPlayer.play();
+    });
+    
+    // Timer functions
+    function startTimer() {
+        seconds = 0;
+        timerInterval = setInterval(() => {
+            seconds++;
+            updateTimerDisplay();
+        }, 1000);
+    }
+    
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+    }
+    
+    function updateTimerDisplay() {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Visualization
+    let animationId;
+    
+    function visualize() {
+        if (!analyser || !canvasContext) return;
+        
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        function draw() {
+            animationId = requestAnimationFrame(draw);
+            
+            analyser.getByteTimeDomainData(dataArray);
+            
+            canvasContext.fillStyle = '#f8f9fa';
+            canvasContext.fillRect(0, 0, canvas.width, canvas.height);
+            
+            canvasContext.lineWidth = 2;
+            canvasContext.strokeStyle = '#667eea';
+            canvasContext.beginPath();
+            
+            const sliceWidth = canvas.width * 1.0 / bufferLength;
+            let x = 0;
+            
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+                
+                if (i === 0) {
+                    canvasContext.moveTo(x, y);
+                } else {
+                    canvasContext.lineTo(x, y);
+                }
+                
+                x += sliceWidth;
+            }
+            
+            canvasContext.lineTo(canvas.width, canvas.height / 2);
+            canvasContext.stroke();
+        }
+        
+        draw();
+    }
+    
+    // Form submission
+    document.getElementById('voiceForm').addEventListener('submit', function(e) {
+        if (!document.getElementById('audioData').value && 
+            !document.querySelector('input[name="audio_file"]').files.length) {
+            e.preventDefault();
+            alert('Please record or upload an audio file before submitting.');
+            return false;
+        }
+        
+        // Show loading
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+        submitButton.disabled = true;
+        
+        return true;
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        if (canvas) {
+            canvas.width = canvas.parentElement.offsetWidth;
+            canvas.height = canvas.parentElement.offsetHeight;
+        }
+    });
+});
+</script>
+{% endblock %}

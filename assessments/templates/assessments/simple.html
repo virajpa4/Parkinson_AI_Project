@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Assessment System</h1>
+    
+    <div class="alert alert-success">
+        <h4><i class="fas fa-check-circle"></i> Assessment Page is Working!</h4>
+        <p>Congratulations! You've successfully reached the assessment page.</p>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-draw-polygon fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Spiral Drawing Test</h5>
+                    <p class="card-text">Draw a spiral to assess motor control and tremors.</p>
+                    <a href="/assessments/spiral/" class="btn btn-primary">Start Test</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-microphone fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Voice Recording Test</h5>
+                    <p class="card-text">Record your voice for speech pattern analysis.</p>
+                    <a href="/assessments/voice/" class="btn btn-primary">Start Test</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-clipboard-list fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Symptom Quiz</h5>
+                    <p class="card-text">Answer questions about your symptoms.</p>
+                    <a href="/assessments/quiz/" class="btn btn-primary">Start Quiz</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="text-center mt-4">
+        <a href="/" class="btn btn-outline-secondary">Back to Home</a>
+    </div>
+</div>
+{% endblock %}

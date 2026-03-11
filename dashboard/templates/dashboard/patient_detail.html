@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ patient.username }} - Patient Details - Parkinson AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Back Button -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <a href="{% url 'dashboard:doctor_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Doctor Dashboard
+            </a>
+        </div>
+    </div>
+    
+    <!-- Patient Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <div style="width: 80px; height: 80px; background-color: #667eea; border-radius: 50%; 
+                                display: flex; align-items: center; justify-content: center; color: white; font-size: 2em;">
+                        {{ patient.first_name|first|default:patient.username|first|upper }}
+                    </div>
+                </div>
+                <div>
+                    <h1 class="h2 mb-1">{{ patient.get_full_name|default:patient.username }}</h1>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-info me-2">Patient ID: {{ patient.id }}</span>
+                        <span class="badge bg-secondary me-2">
+                            {% if patient.userprofile.gender %}
+                                {{ patient.userprofile.get_gender_display }}
+                            {% else %}
+                                Gender not specified
+                            {% endif %}
+                        </span>
+                        {% if patient.userprofile.date_of_birth %}
+                        <span class="text-muted">Age: {{ patient.userprofile.date_of_birth|timesince }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-cog"></i> Actions
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'dashboard:send_alert' patient.id %}">
+                        <i class="fas fa-bell"></i> Send Alert
+                    </a></li>
+                    <li><a class="dropdown-item" href="#">
+                        <i class="fas fa-file-medical"></i> Generate Report
+                    </a></li>
+                    <li><a class="dropdown-item" href="#">
+                        <i class="fas fa-prescription"></i> Create Treatment Plan
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#">
+                        <i class="fas fa-phone"></i> Schedule Call
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">Overall Risk</h6>
+                    <h2 class="text-primary">{{ dashboard.overall_risk_score|floatformat:0 }}</h2>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-primary" style="width: {{ dashboard.overall_risk_score }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">Total Assessments</h6>
+                    <h2 class="text-success">{{ dashboard.total_assessments }}</h2>
+                    <small class="text-muted">
+                        {% if dashboard.last_assessment_date %}
+                        Last: {{ dashboard.last_assessment_date|date:"M d" }}
+                        {% else %}
+                        No assessments yet
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">Active Alerts</h6>
+                    <h2 class="text-warning">{{ alerts|length }}</h2>
+                    <small class="text-muted">
+                        {% if alerts %}
+                        {{ alerts|length }} unread
+                        {% else %}
+                        All clear
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">Monitoring Since</h6>
+                    <h2 class="text-info">{{ dashboard.monitored_since|date:"M Y" }}</h2>
+                    <small class="text-muted">{{ dashboard.monitored_since|timesince }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Patient Information -->
+    <div class="row">
+        <!-- Left Column: Assessments & History -->
+        <div class="col-md-8">
+            <!-- Recent Assessments -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Assessment History</h5>
+                </div>
+                <div class="card-body">
+                    {% if assessments %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Score</th>
+                                    <th>Prediction</th>
+                                    <th>Confidence</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assessment in assessments %}
+                                <tr>
+                                    <td>{{ assessment.date_taken|date:"M d, Y" }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ assessment.get_assessment_type_display }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 8px; width: 100px;">
+                                            <div class="progress-bar 
+                                                {% if assessment.severity_score < 30 %}bg-success
+                                                {% elif assessment.severity_score < 60 %}bg-warning
+                                                {% else %}bg-danger{% endif %}" 
+                                                 style="width: {{ assessment.severity_score }}%">
+                                            </div>
+                                        </div>
+                                        <small>{{ assessment.severity_score|floatformat:1 }}</small>
+                                    </td>
+                                    <td>
+                                        {% if assessment.parkinson_prediction %}
+                                            <span class="badge bg-danger">Positive</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Negative</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ assessment.confidence_score|floatformat:1 }}%</td>
+                                    <td>
+                                        <a href="{% url 'assessments:assessment_result' assessment.id %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-clipboard-list fa-3x text-muted"></i>
+                        <p class="text-muted">No assessment history available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Progress History -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Progress Over Time</h5>
+                </div>
+                <div class="card-body">
+                    {% if history %}
+                    <div style="height: 200px;">
+                        <!-- Simple chart would go here -->
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-line fa-3x text-muted"></i>
+                            <p class="text-muted">Progress chart would display here</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chart-line fa-3x text-muted"></i>
+                        <p class="text-muted">Not enough data for progress chart</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Patient Info & Alerts -->
+        <div class="col-md-4">
+            <!-- Patient Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Patient Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Email:</strong></td>
+                            <td>{{ patient.email }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Phone:</strong></td>
+                            <td>{{ patient.userprofile.phone|default:"Not provided" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Date of Birth:</strong></td>
+                            <td>{{ patient.userprofile.date_of_birth|default:"Not provided" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Address:</strong></td>
+                            <td>{{ patient.userprofile.address|default:"Not provided"|truncatechars:30 }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Joined:</strong></td>
+                            <td>{{ patient.date_joined|date:"M d, Y" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Recent Alerts -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Alerts</h5>
+                </div>
+                <div class="card-body">
+                    {% if alerts %}
+                    <div class="list-group">
+                        {% for alert in alerts|slice:":5" %}
+                        <div class="list-group-item list-group-item-{% if alert.priority == 'critical' %}danger{% elif alert.priority == 'high' %}warning{% else %}info{% endif %}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ alert.title }}</h6>
+                                <small>{{ alert.created_at|timesince }} ago</small>
+                            </div>
+                            <p class="mb-1 small">{{ alert.message|truncatechars:50 }}</p>
+                            <small>
+                                <button class="btn btn-sm btn-outline-dark" onclick="markAlertRead({{ alert.id }})">
+                                    Dismiss
+                                </button>
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-check-circle fa-2x text-success"></i>
+                        <p class="text-muted mt-2">No active alerts</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'dashboard:send_alert' patient.id %}" class="btn btn-outline-warning">
+                            <i class="fas fa-bell"></i> Send Alert
+                        </a>
+                        <button class="btn btn-outline-primary" onclick="scheduleFollowup({{ patient.id }})">
+                            <i class="fas fa-calendar-plus"></i> Schedule Follow-up
+                        </button>
+                        <button class="btn btn-outline-success">
+                            <i class="fas fa-prescription"></i> Prescribe Treatment
+                        </button>
+                        <button class="btn btn-outline-info">
+                            <i class="fas fa-download"></i> Export Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function markAlertRead(alertId) {
+    fetch(`/dashboard/alert/read/${alertId}/`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+function scheduleFollowup(patientId) {
+    const date = prompt('Enter follow-up date (YYYY-MM-DD):', 
+                       new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    if (date) {
+        alert(`Follow-up scheduled for ${date} for patient ID: ${patientId}`);
+        // In real implementation, this would call an API
+    }
+}
+</script>
+{% endblock %}

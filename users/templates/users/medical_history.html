@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-heartbeat"></i> Medical History
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Add New Medical History Form -->
+                    <div class="mb-4">
+                        <h5>Add New Medical Record</h5>
+                        <form method="POST">
+                            {% csrf_token %}
+                            {{ form|crispy }}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Add Record
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Existing Medical History -->
+                    <h5 class="mt-5">Existing Medical Records</h5>
+                    {% if histories %}
+                        <div class="list-group">
+                            {% for history in histories %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ history.condition }}</h6>
+                                    <small>{{ history.diagnosis_date }}</small>
+                                </div>
+                                <p class="mb-1"><strong>Symptoms:</strong> {{ history.symptoms }}</p>
+                                {% if history.current_medication %}
+                                    <p class="mb-1"><strong>Medication:</strong> {{ history.current_medication }}</p>
+                                {% endif %}
+                                <small>Added: {{ history.created_at|date:"M d, Y" }}</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            No medical history records found. Add your first record above.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb"></i> Why Medical History Matters
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>Keeping accurate medical history helps:</p>
+                    <ul>
+                        <li>Track symptom progression over time</li>
+                        <li>Identify patterns in your health</li>
+                        <li>Provide doctors with comprehensive information</li>
+                        <li>Improve AI prediction accuracy</li>
+                        <li>Monitor treatment effectiveness</li>
+                    </ul>
+                    <a href="{% url 'dashboard:patient_dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

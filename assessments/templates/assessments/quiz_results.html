@@ -1,0 +1,99 @@
+<!-- assessments/templates/assessments/quiz_result.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3><i class="fas fa-clipboard-check"></i> Symptom Assessment Results</h3>
+        </div>
+        <div class="card-body">
+            <!-- Score Display -->
+            <div class="text-center mb-4">
+                <h4>Your Score: <span class="badge bg-info fs-4">{{ score }}/{{ total }}</span></h4>
+                <div class="progress" style="height: 25px;">
+                    <div class="progress-bar {% if percentage >= 70 %}bg-danger{% elif percentage >= 40 %}bg-warning{% else %}bg-success{% endif %}" 
+                         role="progressbar" 
+                         style="width: {{ percentage }}%">
+                        {{ percentage|floatformat:1 }}%
+                    </div>
+                </div>
+                <small class="text-muted">Risk Level: 
+                    {% if percentage >= 70 %}
+                        <span class="text-danger fw-bold">High</span>
+                    {% elif percentage >= 40 %}
+                        <span class="text-warning fw-bold">Moderate</span>
+                    {% else %}
+                        <span class="text-success fw-bold">Low</span>
+                    {% endif %}
+                </small>
+            </div>
+
+            <!-- AI Analysis Section -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5><i class="fas fa-robot"></i> AI Analysis</h5>
+                </div>
+                <div class="card-body">
+                    {% if ai_analysis %}
+                        <p>{{ ai_analysis }}</p>
+                    {% else %}
+                        <p class="text-muted">Analysis will be generated based on your responses.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Detailed Results -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5><i class="fas fa-list-check"></i> Response Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Areas of Concern:</h6>
+                            <ul class="list-group">
+                                {% for concern in concerns %}
+                                <li class="list-group-item list-group-item-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> {{ concern }}
+                                </li>
+                                {% empty %}
+                                <li class="list-group-item list-group-item-success">
+                                    <i class="fas fa-check-circle"></i> No significant concerns detected
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Recommendations:</h6>
+                            <ul class="list-group">
+                                {% for recommendation in recommendations %}
+                                <li class="list-group-item list-group-item-info">
+                                    <i class="fas fa-lightbulb"></i> {{ recommendation }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'assessments:quiz' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-redo"></i> Retake Assessment
+                </a>
+                <a href="{% url 'dashboard:dashboard' %}" class="btn btn-primary">
+                    <i class="fas fa-tachometer-alt"></i> Go to Dashboard
+                </a>
+                <button class="btn btn-success" onclick="window.print()">
+                    <i class="fas fa-print"></i> Print Results
+                </button>
+            </div>
+        </div>
+        <div class="card-footer text-muted">
+            Assessment completed on: {{ timestamp|date:"F j, Y, g:i a" }}
+        </div>
+    </div>
+</div>
+{% endblock %}
