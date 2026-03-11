@@ -25,3 +25,26 @@ This is a Django-based machine learning project for Parkinson disease prediction
 ## Author
 
 Viraj Patil
+
+## Screenshots
+
+### Home Screen
+![Home](screenshots/home.png)
+
+### Assessment Type
+![Assessment](screenshots/assessment-type.png)
+
+### Symptom Assessment
+![Symptom](screenshots/symptom-assessment.png)
+
+### Patient Dashboard
+![Patient](screenshots/patient-dashboard.png)
+
+### User Profile
+![Profile](screenshots/user-profile.png)
+
+### Admin Panel
+![Admin](screenshots/admin-panel.png)
+
+### Doctor Dashboard
+![Doctor](screenshots/doctor-dashboard.png)
